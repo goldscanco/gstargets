@@ -1,3 +1,3 @@
-from tp import _test
+import tp
 
-_test()
+tp._test()

@@ -1,8 +1,12 @@
 [tool.poetry]
-name = "tp"
+name = "gstargets"
 version = "0.1.0"
 description = ""
 authors = ["maghrebi <sajad.faghfoor@gmail.com>"]
+
+packages = [
+    { include = "gstargets" },
+]
 
 [tool.poetry.dependencies]
 python = "^3.10"

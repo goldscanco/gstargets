@@ -4,7 +4,7 @@ import numpy as np
 import pandas as pd
 from plotly.subplots import make_subplots
 import volprofile as vp
-from tp.config import DIRECTION
+from gstargets.config import DIRECTION
 
 
 def _findWave(pivots, waveNum, direction):
@@ -64,6 +64,7 @@ def getTPs(df: pd.DataFrame, tradeSide, maximumAcceptableBarType3=0,
 
     params:
         df: pd.DataFrame -> appropriate for volume profile which I had explained in the volprofile package. Checkout `volprofile.getVP` function.
+                        It means that it should have `price` and `volume`
                         Also it must provide the basic ohlcv data.
         tradeSide: str: ['UP', 'DOWN']
         maximumAcceptableBarType3: int -> calculate type3 TPs based on this
@@ -154,6 +155,7 @@ def plot(df: pd.DataFrame, tradeSide, maximumAcceptableBarType3=0,
            nBins=20, windowType3=2, ignorePercentageUp=20, ignorePercentageDown=20,
            zigzagUpThreshold=0.3, zigzagDownThreshold=-0.3):
     """completely identical inputs to getTPs function
+        you can use this function to display the results.
     """
     df.reset_index(inplace=True, drop=True)
     forPlot = df.copy()
