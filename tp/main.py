@@ -3,60 +3,19 @@ import plotly.graph_objects as go
 import numpy as np
 import pandas as pd
 from plotly.subplots import make_subplots
+import volprofile as vp
+from tp.config import DIRECTION
 
-path = "~/Downloads/data/tickers_data/test.csv"
-df = pd.read_csv(path)
-df = df[-500:]
-close = df.close
-pivots = peak_valley_pivots(close, 0.3, -0.3)
-UP = 'up'
-DOWN = 'down'
-
-
-def findTrend(pivots):
-    return UP if pivots[pivots != 0][-2] == -1 else DOWN
-
-
-def findWave(pivots, waveNum=1):
+def _findWave(pivots, waveNum=1):
     indices = np.where(pivots != 0)[0]
     return indices[-waveNum - 1], indices[-waveNum]
 
-
-def getDevelopmentHistogram(rawHist):
-    volume, price, nbin = rawHist['x'], rawHist['y'], rawHist['nbinsy']
-    minPrice, maxPrice = np.min(price), np.max(price)
-
-    step = (maxPrice - minPrice) / nbin
-    idxs = (price - minPrice) // step
-
-    idxs[idxs >= nbin] = nbin - 1
-    idxs[idxs < 0] = 0
-
-    volumes = np.zeros(shape=[nbin])
-    prices = np.zeros(shape=[nbin])
-    for i, key in enumerate(idxs):
-        volumes[int(key)] += volume[i]
-    for i in range(nbin):
-        prices[i] = getPrice(i, step, minPrice)
-
-    return prices, volumes, step, minPrice
-
-
-def getPrice(idx, step, minPrice, lowerBound=False, upperBound=False):
-    if not lowerBound and not upperBound:
-        return minPrice + (2 * idx + 1) * step / 2
-    if lowerBound:
-        return minPrice + idx * step
-    if upperBound:
-        return minPrice + (idx + 1) * step
-
-
-def getTPsIdx(histogram, trend, ignorePercentage=20):
+def _getTPsIdx(histogram, trend, ignorePercentage=20):
     _from, _to = int(len(histogram) // (100/ignorePercentage)),\
         int(len(histogram) - len(histogram) // (100//ignorePercentage))
 
     start, end, step = _from, _to + 1, 1
-    if trend == DOWN:
+    if trend == DIRECTION.DOWN:
         start, end, step = _to, _from - 1, -1
 
     answers = []
@@ -78,65 +37,75 @@ def getTPsIdx(histogram, trend, ignorePercentage=20):
     return answers
 
 
-def getTPs(tpsIdx, trend, step, minPrice):
-    lowerBound, upperBound = False, False
-    if trend == UP:
-        lowerBound = True
-    elif trend == DOWN:
-        upperBound = True
-
+def _getTPs(vpdf, tpsIdx, trend):
     res = set()
     for _, dic in enumerate(tpsIdx):
-        price = getPrice(dic['index'], step, minPrice, lowerBound, upperBound)
+        price = vpdf.iloc[dic['index']].minPrice if trend == DIRECTION.UP else vpdf.iloc[dic['index']].maxPrice
         res.add(price)   
     return res   
 
-nbin = 20
-basedOnWhichWaveFromLast = 2
-ignorePercentage = 20
+def getTPs(df: pd.DataFrame, tradeSide, nBins=20):
+    """suggest target points based on wave
+    
+    params:
+        df: pd.DataFrame -> appropriate for volume profile which I had explained in the volprofile package. Checkout `volprofile.getVP` function.
+                            Also it must provide the basic ohlcv data.
+        tradeSide: str: ['UP', 'DOWN']
+        nBins: int -> needed for volume profile (default: 20)
+        
+    """
 
-# entrypoint
-# type 2 input
-# type 3 input
-# type 4 : input window , input threshold of size 
-# trade side
-# nth wave of same trade side
-# range
+def _test():
+    path = "~/Downloads/data/tickers_data/test.csv"
+    df = pd.read_csv(path)
 
-trend = findTrend(pivots)
-waveIndices = findWave(pivots, basedOnWhichWaveFromLast)
+    nBins = 20
+    basedOnWhichWaveFromLast = 5
+    ignorePercentage = 20
 
-volume = df['volume'].iloc[waveIndices[0]:waveIndices[1]]
-price = (df['high'].iloc[waveIndices[0]:waveIndices[1]] +
-         df['low'].iloc[waveIndices[0]:waveIndices[1]]) / 2
+    # entrypoint
+    # type 2 input
+    # type 3 input
+    # type 4 : input window , input threshold of size 
+    # trade side
+    # nth wave of same trade side
+    # range
+
+    n= 500
+    df = df[-n:]
+    pivots = peak_valley_pivots(df.close, 0.3, -0.3)
+    trend = findTrend(pivots)
+    waveIndices = _findWave(pivots, basedOnWhichWaveFromLast)
+
+    df['price'] = (df['high'] + df['low']) / 2
+    df = df[['volume', 'price']]
+
+    forPlot = df[-n:]
+    print(forPlot)
+    df = df[waveIndices[0] : waveIndices[1]]
 
 
-hist = go.Histogram(x=volume,
-                    y=price,
-                    nbinsy=nbin,
-                    orientation='h'
-                    )
+    res = vp.getVP(df, nBins=nBins)
+    TPsIdx = _getTPsIdx(res.aggregateVolume, trend, ignorePercentage=ignorePercentage)
+    TPs = _getTPs(res, TPsIdx, trend)
 
-histPrice, histVol, step, minP = getDevelopmentHistogram(hist)
-TPsIdx = getTPsIdx(histVol, trend, ignorePercentage=ignorePercentage)
-TPs = getTPs(TPsIdx, trend, step, minP)
+    fig = make_subplots(rows = 1, cols = 2)
+    fig.add_trace(go.Bar(
+                x=res.aggregateVolume,
+                y=(res.minPrice + res.maxPrice) / 2,
+                orientation='h'), row=1, col=2)
 
+    fig.add_trace(go.Scatter(name='close', x=np.arange(len(forPlot.price)), y=forPlot.price,
+                mode='lines', marker_color='#D2691E'))
+    fig.add_trace(go.Scatter(name='top', x=np.arange(len(forPlot.price))[
+        pivots == 1], y=forPlot.price[pivots == 1], mode='markers', marker_color='green'))
+    fig.add_trace(go.Scatter(name='top', x=np.arange(len(forPlot.price))[
+                pivots == -1], y=forPlot.price[pivots == -1], mode='markers', marker_color='red'))
 
+    for line in TPs:
+        fig.add_hline(y=line, line_width=3, line_dash="dash", line_color="green")
 
-fig = make_subplots(rows = 1, cols = 2)
-fig.add_trace(go.Bar(
-            x=histVol,
-            y=histPrice,
-            orientation='h'), row=1, col=2)
+    fig.show()
 
-fig.add_trace(go.Scatter(name='close', y=df.close,
-              mode='lines', marker_color='#D2691E'))
-fig.add_trace(go.Scatter(name='top', x=np.arange(len(close))[
-    pivots == 1], y=close[pivots == 1], mode='markers', marker_color='green'))
-fig.add_trace(go.Scatter(name='top', x=np.arange(len(close))[
-              pivots == -1], y=close[pivots == -1], mode='markers', marker_color='red'))
-
-for line in TPs:
-    fig.add_hline(y=line, line_width=3, line_dash="dash", line_color="green")
-
-fig.show()
+if __name__ == '__main__':
+    _test()
