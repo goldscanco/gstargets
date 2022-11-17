@@ -59,7 +59,7 @@ def _getTPs(vpdf, tpsIdx, trend):
 def getTPs(df: pd.DataFrame, tradeSide, maximumAcceptableBarType3=0,
            thresholdType2=0.5, entryPoint=None, upWaveNums=[], downWaveNums=[],
            nBins=20, windowType3=2, ignorePercentageUp=20, ignorePercentageDown=20,
-           zigzagUpThreshold=0.3, zigzagDownThreshold=-0.3):
+           zigzagUpThreshold=0.3, zigzagDownThreshold=-0.3, returnVP=False, returnPivot=False):
     """suggest target points based on wave
 
     params:
@@ -117,7 +117,14 @@ def getTPs(df: pd.DataFrame, tradeSide, maximumAcceptableBarType3=0,
     TPsIdx = _getTPsIdx(res.aggregateVolume, tradeSide,
                         ignorePercentageUp, ignorePercentageDown, thresholdType2=thresholdType2)
     TPs = _getTPs(res, TPsIdx, tradeSide)
-    return TPs
+    toReturn = TPs
+    if returnVP or returnPivot:
+        toReturn = {'tps': TPs}
+    if returnVP:
+        toReturn['vp'] = res
+    if returnPivot:
+        toReturn['pivots'] = pivots
+    return toReturn
 
 def _test():
     path = "~/Downloads/data/tickers_data/test.csv"
@@ -125,23 +132,57 @@ def _test():
 
     nBins = 20
     tradeSide = DIRECTION.UP
-    downWaveNums = [1, 2]
-    upWaveNums = [1]
+    downWaveNums = [1]
+    upWaveNums = []
     zigzagDownThreshold = -0.3
     zigzagUpThreshold = 0.3
     ignorePercentageUp = 20
     ignorePercentageDown = 20
 
     # TODO: type 3 input
+    # TODO: increasing type3
 
     n = 500
     df = df[-n:]
-    forPlot = df.copy()
+    
     df['price'] = (df['high'] + df['low']) / 2
     df = df[['volume', 'price', 'close']]
+    plot(df, tradeSide, nBins=nBins, downWaveNums=downWaveNums)
+    
+def plot(df: pd.DataFrame, tradeSide, maximumAcceptableBarType3=0,
+           thresholdType2=0.5, entryPoint=None, upWaveNums=[], downWaveNums=[],
+           nBins=20, windowType3=2, ignorePercentageUp=20, ignorePercentageDown=20,
+           zigzagUpThreshold=0.3, zigzagDownThreshold=-0.3):
+    """completely identical inputs to getTPs function
+    """
+    df.reset_index(inplace=True, drop=True)
+    forPlot = df.copy()
+    # print(df)
+    res = getTPs(df, tradeSide, maximumAcceptableBarType3=maximumAcceptableBarType3,
+                 thresholdType2=thresholdType2, entryPoint=entryPoint, upWaveNums=upWaveNums,
+                 downWaveNums=downWaveNums, nBins=nBins, windowType3=windowType3, ignorePercentageUp=ignorePercentageUp,
+                 ignorePercentageDown=ignorePercentageDown, zigzagUpThreshold=zigzagUpThreshold, 
+                 zigzagDownThreshold=zigzagDownThreshold, returnPivot=True, returnVP=True)
+    TPs, res, pivots = res['tps'], res['vp'], res['pivots']  
 
-    print(getTPs(df, tradeSide, nBins=nBins, downWaveNums=downWaveNums))
+    fig = make_subplots(rows = 1, cols = 2)
+    fig.add_trace(go.Bar(
+                x=res.aggregateVolume,
+                y=(res.minPrice + res.maxPrice) / 2,
+                orientation='h'), row=1, col=2)
 
+    close = forPlot.close
+    fig.add_trace(go.Scatter(name='close', y=close,
+                mode='lines', marker_color='#D2691E'))
+    fig.add_trace(go.Scatter(name='top', x=np.arange(len(close))[
+        pivots == 1], y=close[pivots == 1], mode='markers', marker_color='green'))
+    fig.add_trace(go.Scatter(name='top', x=np.arange(len(close))[
+                pivots == -1], y=close[pivots == -1], mode='markers', marker_color='red'))
+
+    for line in TPs:
+        fig.add_hline(y=line['price'], line_width=3, line_dash="dash", line_color="green")
+        
+    fig.show()
 
 if __name__ == '__main__':
     _test()
