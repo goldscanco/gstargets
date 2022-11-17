@@ -10,6 +10,11 @@ jobs:
     name: Release
     runs-on: ubuntu-latest
     steps:
+    
+      - name: copy release management scripts
+        run: Copy '/' '${GITHUB_WORKSPACE}/'
+        shell: bash
+        
       - name: Publish python poetry package
         uses: JRubics/poetry-publish@v1.14
         with:
