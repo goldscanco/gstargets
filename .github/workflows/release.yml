@@ -12,7 +12,7 @@ jobs:
     steps:
     
       - name: copy release management scripts
-        run: cp -R '/' '${GITHUB_WORKSPACE}/'
+        run: cp 'pyproject.toml' '${GITHUB_WORKSPACE}/'
         shell: bash
         
       - name: Publish python poetry package
