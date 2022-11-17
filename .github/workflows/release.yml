@@ -10,7 +10,7 @@ jobs:
     name: Release
     runs-on: ubuntu-latest
     steps:
-      - name: Build and publish to pypi
-        uses: JRubics/poetry-publish@v1.14
+      - name: Publish a Python distribution to PyPI
+        uses: pypa/gh-action-pypi-publish@release/v1
         with:
-          pypi_token: ${{ secrets.PYPI_TOKEN }}
+          password: ${{ secrets.PYPI_TOKEN }}
