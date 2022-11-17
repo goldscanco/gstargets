@@ -19,10 +19,9 @@ def _findWave(pivots, waveNum, direction):
     return indices[idx], indices[idx + 1]
 
 
-def _getTPsIdx(histogram, tradeSide, ignorePercentageUp=20, ignorePercentageDown=20):
+def _getTPsIdx(histogram, tradeSide, ignorePercentageUp=20, ignorePercentageDown=20, thresholdType2=0.5):
     _from, _to = int(len(histogram) // (100/ignorePercentageDown)),\
         int(len(histogram) - len(histogram) // (100//ignorePercentageUp))
-
 
     start, end, step = _from, _to + 1, 1
     if tradeSide == DIRECTION.DOWN:
@@ -32,34 +31,33 @@ def _getTPsIdx(histogram, tradeSide, ignorePercentageUp=20, ignorePercentageDown
     prevBin = 0
     Half = False
 
-    minIdxs = np.add(np.where(histogram[_from:_to] == np.min(histogram[_from:_to])), _from)
+    minIdxs = np.add(
+        np.where(histogram[_from:_to] == np.min(histogram[_from:_to])), _from)
     for minIdx in minIdxs[0]:
         answers.append({'type': "type1", "index": minIdx})
     for i in range(start, end, step):
         curBin = histogram[i]
-        if curBin < prevBin / 2:
+        if curBin < prevBin * thresholdType2:
             Half = True
-            print(i)
         elif Half:
             answers.append({"type": "type2", "index": i - 1})
             Half = False
         prevBin = curBin
 
-    print(answers)
     return answers
 
 
 def _getTPs(vpdf, tpsIdx, trend):
-    res = set()
+    res = []
     for _, dic in enumerate(tpsIdx):
         price = vpdf.iloc[dic['index']
                           ].minPrice if trend == DIRECTION.UP else vpdf.iloc[dic['index']].maxPrice
-        res.add(price)
+        res.append({"price": price, "type": dic['type']})
     return res
 
 
-def getTPs(df: pd.DataFrame, tradeSide, maximumAcceptableBarType3,
-           thresholdType2=0.5, entryPoint=None, upWaveNums=[], downWaveNums=[], 
+def getTPs(df: pd.DataFrame, tradeSide, maximumAcceptableBarType3=0,
+           thresholdType2=0.5, entryPoint=None, upWaveNums=[], downWaveNums=[],
            nBins=20, windowType3=2, ignorePercentageUp=20, ignorePercentageDown=20,
            zigzagUpThreshold=0.3, zigzagDownThreshold=-0.3):
     """suggest target points based on wave
@@ -94,6 +92,32 @@ def getTPs(df: pd.DataFrame, tradeSide, maximumAcceptableBarType3,
             type3 : before some strong volume bars
     """
 
+    df.reset_index(inplace=True, drop=True)
+
+    pivots = peak_valley_pivots(
+        df.close, zigzagUpThreshold, zigzagDownThreshold)
+
+    df['inVolumeProfile'] = False
+
+    for upWaveNum in upWaveNums:
+        waveIndices = _findWave(pivots, upWaveNum, DIRECTION.DOWN)
+        cond1 = np.logical_and(
+            df.index >= waveIndices[0], df.index < waveIndices[1])
+        df['inVolumeProfile'] = np.logical_or(cond1, df['inVolumeProfile'])
+
+    for downWaveNum in downWaveNums:
+        waveIndices = _findWave(pivots, downWaveNum, DIRECTION.DOWN)
+        cond1 = np.logical_and(
+            df.index >= waveIndices[0], df.index < waveIndices[1])
+        df['inVolumeProfile'] = np.logical_or(cond1, df['inVolumeProfile'])
+
+    df = df[df.inVolumeProfile == True]
+
+    res = vp.getVP(df, nBins=nBins)
+    TPsIdx = _getTPsIdx(res.aggregateVolume, tradeSide,
+                        ignorePercentageUp, ignorePercentageDown, thresholdType2=thresholdType2)
+    TPs = _getTPs(res, TPsIdx, tradeSide)
+    return TPs
 
 def _test():
     path = "~/Downloads/data/tickers_data/test.csv"
@@ -102,67 +126,21 @@ def _test():
     nBins = 20
     tradeSide = DIRECTION.UP
     downWaveNums = [1, 2]
-    upWaveNums = []
+    upWaveNums = [1]
     zigzagDownThreshold = -0.3
     zigzagUpThreshold = 0.3
     ignorePercentageUp = 20
-    ignorePercentageDown = 20 
-    
-    # entrypoint
-    # type 2 input
-    # type 3 input
-    # type 4 : input window , input threshold of size
+    ignorePercentageDown = 20
+
+    # TODO: type 3 input
 
     n = 500
     df = df[-n:]
     forPlot = df.copy()
     df['price'] = (df['high'] + df['low']) / 2
     df = df[['volume', 'price', 'close']]
-    df.reset_index(inplace=True, drop=True)
-    
-    pivots = peak_valley_pivots(df.close, zigzagUpThreshold, zigzagDownThreshold)
-    
-    df['inVolumeProfile'] = False
-    
-    
-    for upWaveNum in upWaveNums:
-        waveIndices = _findWave(pivots, upWaveNum, DIRECTION.DOWN)
-        cond1 = np.logical_and(df.index >= waveIndices[0], df.index < waveIndices[1])
-        df['inVolumeProfile'] =  np.logical_or(cond1, df['inVolumeProfile'])     
 
-    for downWaveNum in downWaveNums:
-        waveIndices = _findWave(pivots, downWaveNum, DIRECTION.DOWN)
-        cond1 = np.logical_and(df.index >= waveIndices[0], df.index < waveIndices[1])
-        df['inVolumeProfile'] =  np.logical_or(cond1, df['inVolumeProfile'])
-    
-    df = df[df.inVolumeProfile == True]
-
-
-   
-
-    res = vp.getVP(df, nBins=nBins)
-    TPsIdx = _getTPsIdx(res.aggregateVolume, tradeSide,
-                        ignorePercentageUp, ignorePercentageDown)
-    TPs = _getTPs(res, TPsIdx, tradeSide)
-
-    fig = make_subplots(rows=1, cols=2)
-    fig.add_trace(go.Bar(
-        x=res.aggregateVolume,
-        y=(res.minPrice + res.maxPrice) / 2,
-        orientation='h'), row=1, col=2)
-
-    fig.add_trace(go.Scatter(name='close', x=np.arange(len(forPlot)), y=forPlot.close,
-                             mode='lines', marker_color='#D2691E'))
-    fig.add_trace(go.Scatter(name='top', x=np.arange(len(forPlot))[
-        pivots == 1], y=forPlot.close[pivots == 1], mode='markers', marker_color='green'))
-    fig.add_trace(go.Scatter(name='top', x=np.arange(len(forPlot))[
-        pivots == -1], y=forPlot.close[pivots == -1], mode='markers', marker_color='red'))
-
-    for line in TPs:
-        fig.add_hline(y=line, line_width=3,
-                      line_dash="dash", line_color="green")
-
-    fig.show()
+    print(getTPs(df, tradeSide, nBins=nBins, downWaveNums=downWaveNums))
 
 
 if __name__ == '__main__':
