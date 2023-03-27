@@ -12,6 +12,7 @@ packages = [
 python = ">=3.8,<4"  
 zigzag = "^0.3.2"
 volprofile = "^0.1.6"
+packaging = "^23.0"
 
 [tool.poetry.dev-dependencies]
 

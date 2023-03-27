@@ -15,6 +15,14 @@ optional = false
 python-versions = ">=3.8"
 
 [[package]]
+name = "packaging"
+version = "23.0"
+description = "Core utilities for Python packages"
+category = "main"
+optional = false
+python-versions = ">=3.7"
+
+[[package]]
 name = "pandas"
 version = "1.5.3"
 description = "Powerful data structures for data analysis, time series, and statistics"
@@ -111,11 +119,12 @@ numpy = ">=1.21.1"
 [metadata]
 lock-version = "1.1"
 python-versions = ">=3.8,<4"  
-content-hash = "849a517ff4e4e73a872548343f2ddf334985b546ec3f61112eda706e2ba1ae95"
+content-hash = "ada4c723ec2fb1ae3ee52238da176cf69e391e5117f11b6f84215a7b47196a66"
 
 [metadata.files]
 cython = []
 numpy = []
+packaging = []
 pandas = []
 plotly = []
 python-dateutil = []
