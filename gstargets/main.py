@@ -127,29 +127,7 @@ def getTPs(df: pd.DataFrame, tradeSide, maximumAcceptableBarType3=0,
         toReturn['pivots'] = pivots
     return toReturn
 
-def _test():
-    path = "~/Downloads/data/tickers_data/test.csv"
-    df = pd.read_csv(path)
-
-    nBins = 20
-    tradeSide = DIRECTION.UP
-    downWaveNums = [1]
-    upWaveNums = []
-    zigzagDownThreshold = -0.3
-    zigzagUpThreshold = 0.3
-    ignorePercentageUp = 20
-    ignorePercentageDown = 20
-
-    # TODO: type 3 input
-    # TODO: increasing type3
-
-    n = 500
-    df = df[-n:]
-    
-    df['price'] = (df['high'] + df['low']) / 2
-    df = df[['volume', 'price', 'close']]
-    plot(df, tradeSide, nBins=nBins, downWaveNums=downWaveNums)
-    
+   
 def plot(df: pd.DataFrame, tradeSide, maximumAcceptableBarType3=0,
            thresholdType2=0.5, entryPoint=None, upWaveNums=[], downWaveNums=[],
            nBins=20, windowType3=2, ignorePercentageUp=20, ignorePercentageDown=20,
@@ -178,13 +156,41 @@ def plot(df: pd.DataFrame, tradeSide, maximumAcceptableBarType3=0,
                 mode='lines', marker_color='#D2691E'))
     fig.add_trace(go.Scatter(name='top', x=np.arange(len(close))[
         pivots == 1], y=close[pivots == 1], mode='markers', marker_color='green'))
-    fig.add_trace(go.Scatter(name='top', x=np.arange(len(close))[
+    fig.add_trace(go.Scatter(name='bottom', x=np.arange(len(close))[
                 pivots == -1], y=close[pivots == -1], mode='markers', marker_color='red'))
 
     for line in TPs:
         fig.add_hline(y=line['price'], line_width=3, line_dash="dash", line_color="green")
         
     fig.show()
+
+def _test():
+    path = "~/Downloads/data/tickers_data/test.csv"
+    df = pd.read_csv(path)
+
+    nBins = 20
+    tradeSide = DIRECTION.UP
+    downWaveNums = [1]
+    upWaveNums = []
+    zigzagDownThreshold = -0.03
+    zigzagUpThreshold = 0.03
+    ignorePercentageUp = 20
+    ignorePercentageDown = 20
+
+    # TODO: type 3 input
+    # TODO: increasing type3
+
+    n = 500
+    df = df[-n:]
+    
+    df['price'] = (df['high'] + df['low']) / 2
+    df = df[['volume', 'price', 'close']]
+    plot(df, tradeSide, 
+         nBins=nBins, downWaveNums=downWaveNums,
+         zigzagUpThreshold=zigzagUpThreshold,
+         zigzagDownThreshold=zigzagDownThreshold
+         )
+ 
 
 if __name__ == '__main__':
     _test()
