@@ -4,7 +4,7 @@ import numpy as np
 import pandas as pd
 from plotly.subplots import make_subplots
 import volprofile as vp
-from gstargets.config import DIRECTION
+from gstargets.config import DIRECTION, Develop
 
 
 def _findWave(pivots, waveNum, direction):
@@ -103,6 +103,8 @@ def _get_tp_level_index(volprofile_result, tradeSide,
         answers.append({'type': "type1", "index": minIdx})
     for jumpedIdx in _get_jumped_idxs(volprofile_result.aggregateVolume, start, end, step, thresholdType2):
         answers.append({'type': "type2", "index": jumpedIdx})
+    if Develop == True:
+        print(answers)
     return answers
 
 
@@ -112,7 +114,42 @@ def _convert_index_to_price(vpdf, tpsIdx, trend):
         price = vpdf.iloc[dic['index']
                           ].minPrice if trend == DIRECTION.UP else vpdf.iloc[dic['index']].maxPrice
         res.append({"price": price, "type": dic['type']})
+    if Develop:
+        print(res)
     return res
+
+
+def _get_requested_volprofile_for_waves(df, pivots, upWaveNums, downWaveNums, nBins):
+    df['inVolumeProfile'] = False
+
+    for upWaveNum in upWaveNums:
+        waveIndices = _findWave(pivots, upWaveNum, DIRECTION.DOWN)
+        cond1 = np.logical_and(
+            df.index >= waveIndices[0], df.index < waveIndices[1])
+        df['inVolumeProfile'] = np.logical_or(cond1, df['inVolumeProfile'])
+
+    for downWaveNum in downWaveNums:
+        waveIndices = _findWave(pivots, downWaveNum, DIRECTION.DOWN)
+        cond1 = np.logical_and(
+            df.index >= waveIndices[0], df.index < waveIndices[1])
+        df['inVolumeProfile'] = np.logical_or(cond1, df['inVolumeProfile'])
+
+    df = df[df.inVolumeProfile == True]
+
+    res = vp.getVP(df, nBins=nBins)
+    return res
+
+
+def getReversalArea(df: pd.DataFrame, tradeSide, entryPoint=None, upWaveNums=[1], downWaveNums=[1],
+                    nBins=20, windowType3=2, ignorePercentageUp=20, ignorePercentageDown=20, 
+                    zigzagUpThreshold=0.3, zigzagDownThreshold=-0.3, returnVP=False, returnPivot=False, 
+                    cutoff_threshold=0.25):
+    reversalAreas = []
+    df.reset_index(inplace=True, drop=True)
+    pivots = peak_valley_pivots(df.close, zigzagUpThreshold, zigzagDownThreshold)
+    volprofile_result = _get_requested_volprofile_for_waves(df, pivots, upWaveNums, downWaveNums, nBins)  
+    _get_high_volume_area(volprofile_result, current_price=entryPoint, trade_side=tradeSide, remove_edge_levels=True, cutoff_threshold=cutoff_threshold)
+    return reversalAreas
 
 
 def getTPs(df: pd.DataFrame, tradeSide, maximumAcceptableBarType3=0,
@@ -158,23 +195,7 @@ def getTPs(df: pd.DataFrame, tradeSide, maximumAcceptableBarType3=0,
     pivots = peak_valley_pivots(
         df.close, zigzagUpThreshold, zigzagDownThreshold)
 
-    df['inVolumeProfile'] = False
-
-    for upWaveNum in upWaveNums:
-        waveIndices = _findWave(pivots, upWaveNum, DIRECTION.DOWN)
-        cond1 = np.logical_and(
-            df.index >= waveIndices[0], df.index < waveIndices[1])
-        df['inVolumeProfile'] = np.logical_or(cond1, df['inVolumeProfile'])
-
-    for downWaveNum in downWaveNums:
-        waveIndices = _findWave(pivots, downWaveNum, DIRECTION.DOWN)
-        cond1 = np.logical_and(
-            df.index >= waveIndices[0], df.index < waveIndices[1])
-        df['inVolumeProfile'] = np.logical_or(cond1, df['inVolumeProfile'])
-
-    df = df[df.inVolumeProfile == True]
-
-    res = vp.getVP(df, nBins=nBins)
+    res = _get_requested_volprofile_for_waves(df, pivots, upWaveNums, downWaveNums, nBins) 
     TPsIdx = _get_tp_level_index(res, tradeSide,
                         ignorePercentageUp, ignorePercentageDown, thresholdType2=thresholdType2)
     TPs = _convert_index_to_price(res, TPsIdx, tradeSide)
