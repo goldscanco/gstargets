@@ -81,7 +81,9 @@ def _get_high_volume_area(volprofile_result, current_price, trade_side, remove_e
         volprofile_result.loc[low_level:high_level, 'valid'] = True 
 
     _maxes = _get_max_idxs(volprofile_result[volprofile_result['valid'] == True])
-    return _maxes 
+    return [ 
+        volprofile_result.iloc[_max, :].to_dict() for _max in _maxes            
+    ]
 
 
 
@@ -137,6 +139,7 @@ def _get_requested_volprofile_for_waves(df, pivots, upWaveNums, downWaveNums, nB
     df = df[df.inVolumeProfile == True]
 
     res = vp.getVP(df, nBins=nBins)
+    res['index'] = res.index
     return res
 
 
@@ -146,10 +149,21 @@ def getReversalArea(df: pd.DataFrame, tradeSide, entryPoint=None, upWaveNums=[1]
                     cutoff_threshold=0.25):
     reversalAreas = []
     df.reset_index(inplace=True, drop=True)
+
     pivots = peak_valley_pivots(df.close, zigzagUpThreshold, zigzagDownThreshold)
     volprofile_result = _get_requested_volprofile_for_waves(df, pivots, upWaveNums, downWaveNums, nBins)  
-    _get_high_volume_area(volprofile_result, current_price=entryPoint, trade_side=tradeSide, remove_edge_levels=True, cutoff_threshold=cutoff_threshold)
-    return reversalAreas
+
+    res = _get_high_volume_area(volprofile_result, current_price=entryPoint, trade_side=tradeSide, remove_edge_levels=True, cutoff_threshold=cutoff_threshold)
+    # the following line are only for testing purposes
+    toReturn = res
+    if returnVP or returnPivot:
+        toReturn = {'reversal_areas': toReturn}
+    if returnVP:
+        toReturn['vp'] = volprofile_result 
+    if returnPivot:
+        toReturn['pivots'] = pivots
+    return toReturn
+
 
 
 def getTPs(df: pd.DataFrame, tradeSide, maximumAcceptableBarType3=0,
@@ -210,7 +224,7 @@ def getTPs(df: pd.DataFrame, tradeSide, maximumAcceptableBarType3=0,
     return toReturn
 
    
-def plot(df: pd.DataFrame, tradeSide, maximumAcceptableBarType3=0,
+def plot_target_points(df: pd.DataFrame, tradeSide, maximumAcceptableBarType3=0,
            thresholdType2=0.5, entryPoint=None, upWaveNums=[], downWaveNums=[],
            nBins=20, windowType3=2, ignorePercentageUp=20, ignorePercentageDown=20,
            zigzagUpThreshold=0.3, zigzagDownThreshold=-0.3):
@@ -226,9 +240,6 @@ def plot(df: pd.DataFrame, tradeSide, maximumAcceptableBarType3=0,
                  ignorePercentageDown=ignorePercentageDown, zigzagUpThreshold=zigzagUpThreshold, 
                  zigzagDownThreshold=zigzagDownThreshold, returnPivot=True, returnVP=True)
     TPs, res, pivots = res['tps'], res['vp'], res['pivots']  
-
-    res['index'] = res.index
-    _finally = _get_high_volume_area(res, 0, DIRECTION.DOWN, remove_edge_levels=True, cutoff_threshold=0.25)
 
     fig = make_subplots(rows = 1, cols = 2)
     fig.add_trace(go.Bar(
@@ -257,7 +268,7 @@ def plot(df: pd.DataFrame, tradeSide, maximumAcceptableBarType3=0,
         
     fig.show()
 
-def _manual_test():
+def _manual_test_tp():
     # TODO : use yfinance and pytse-client to get plenty of tickers 
     # and test automatically
     path = "~/Downloads/data/tickers_data/test.csv"
@@ -274,13 +285,66 @@ def _manual_test():
     
     df['price'] = (df['high'] + df['low']) / 2
     df = df[['volume', 'price', 'close']]
-    plot(df, tradeSide, 
+    plot_target_points(df, tradeSide, 
          nBins=nBins, downWaveNums=downWaveNums,
          zigzagUpThreshold=zigzagUpThreshold,
          zigzagDownThreshold=zigzagDownThreshold
          )
- 
+
+def plot_reversal_area(df, tradeSide, upWaveNums=[], downWaveNums=[]):
+    df.reset_index(inplace=True, drop=True)
+    forPlot = df.copy()
+    
+    res = getReversalArea(df, tradeSide, upWaveNums=upWaveNums, downWaveNums=downWaveNums, returnPivot=True, returnVP=True)
+    
+    rev_areas, res, pivots = res['reversal_areas'], res['vp'], res['pivots']  
+
+    fig = make_subplots(rows = 1, cols = 2)
+    fig.add_trace(go.Bar(
+                x=res.aggregateVolume,
+                y=(res.minPrice + res.maxPrice) / 2,
+                orientation='h'), row=1, col=2)
+
+    close = forPlot.close
+    fig.add_trace(go.Scatter(name='close', y=close,
+                mode='lines', marker_color='#D2691E'))
+    for waveNum in upWaveNums:
+        wave = _findWave(pivots, waveNum, DIRECTION.UP)
+        fig.add_trace(go.Scatter(name='close', x=np.arange(len(close))[wave[0]: wave[1]], 
+                y=close[wave[0]: wave[1]], mode='lines', marker_color='black'))
+    for waveNum in downWaveNums:
+        wave = _findWave(pivots, waveNum, DIRECTION.DOWN)
+        fig.add_trace(go.Scatter(name='close', x=np.arange(len(close))[wave[0]: wave[1]], 
+                y=close[wave[0]: wave[1]], mode='lines', marker_color='black'))
+    fig.add_trace(go.Scatter(name='top', x=np.arange(len(close))[
+        pivots == 1], y=close[pivots == 1], mode='markers', marker_color='green'))
+    fig.add_trace(go.Scatter(name='bottom', x=np.arange(len(close))[
+                pivots == -1], y=close[pivots == -1], mode='markers', marker_color='red'))
+
+    for line in rev_areas:
+        print(line)
+        fig.add_hline(y=line['maxPrice'], line_width=3, line_dash="dash", line_color="green")
+        fig.add_hline(y=line['minPrice'], line_width=3, line_dash="dash", line_color="blue")
+        
+    fig.show()
+
+
+
+def _manual_test_reversal():
+    path = "~/Downloads/data/tickers_data/test.csv"
+    df = pd.read_csv(path)
+
+    tradeSide = DIRECTION.DOWN
+    upWaveNums = [1]
+
+    n = 1000 
+    df = df[-n:]
+    
+    df['price'] = (df['high'] + df['low']) / 2
+    df = df[['volume', 'price', 'close']]
+    plot_reversal_area(df, tradeSide, upWaveNums=upWaveNums)
 
 if __name__ == '__main__':
-    _manual_test()
+    # _manual_test_tp()
+    _manual_test_reversal()
     
