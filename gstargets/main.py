@@ -8,7 +8,20 @@ from gstargets.config import DIRECTION
 
 
 def _findWave(pivots, waveNum, direction):
+    """
+    get the wave relative to the end of chart for example if waveNum = 1 direction='up'
+    get the first wave which the direction was upward
+    it follows the notation of zigzag indicator which always ends with a dummy pivot
+    """
+    # validation check
+    if waveNum < 1 or type(waveNum) != int:
+        raise ValueError("not a valid waive number")
+    if direction not in (DIRECTION.UP, DIRECTION.DOWN):
+        raise ValueError("not a valid direction")
+
+    # all trend changing indices
     indices = np.where(pivots != 0)[0]
+    # iterate over the first to just one before the last one
     count, idx = 0, len(indices) - 2
     while count < waveNum and idx != 0:
         _index = indices[idx]
@@ -172,15 +185,15 @@ def _test():
     tradeSide = DIRECTION.UP
     downWaveNums = [1]
     upWaveNums = []
-    zigzagDownThreshold = -0.03
-    zigzagUpThreshold = 0.03
+    zigzagDownThreshold = -0.3
+    zigzagUpThreshold = 0.3
     ignorePercentageUp = 20
     ignorePercentageDown = 20
 
     # TODO: type 3 input
     # TODO: increasing type3
 
-    n = 500
+    n = 1000 
     df = df[-n:]
     
     df['price'] = (df['high'] + df['low']) / 2
