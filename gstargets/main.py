@@ -31,11 +31,22 @@ def _findWave(pivots, waveNum, direction):
         idx -= 1
     return indices[idx], indices[idx + 1]
 
-def _get_min_idxs(volprofile_result, start, end):
-    return np.add(np.where(volprofile_result[start:end] == np.min(volprofile_result[start:end])), start)[0]
+def _get_min_idxs(volprofile_result):
+    idxs = np.where(volprofile_result.aggregateVolume == np.min(volprofile_result.aggregateVolume))[0]
 
-def _get_max_idxs(volprofile_result, start, end):
-    return np.add(np.where(volprofile_result[start:end] == np.max(volprofile_result[start:end])), start)[0]
+    answers = []
+    for idx in idxs:
+        answers.append(int(volprofile_result.iloc[idx, :]['index']))
+    return answers
+
+
+def _get_max_idxs(volprofile_result):
+    idxs = np.where(volprofile_result.aggregateVolume == np.max(volprofile_result.aggregateVolume))[0]
+
+    answers = []
+    for idx in idxs:
+        answers.append(int(volprofile_result.iloc[idx, :]['index']))
+    return answers
 
 def _get_jumped_idxs(volprofile_result, start, end, step, thresholdType2):
     answers = []
@@ -52,25 +63,46 @@ def _get_jumped_idxs(volprofile_result, start, end, step, thresholdType2):
 
     return answers
 
+def _get_high_volume_area(volprofile_result, current_price, trade_side, remove_edge_levels=False, cutoff_threshold=0.25):
+    # should it only check for beyond the current price
+    # in downward trend detection for example check for
+    # greater than current price reversal values ?
+
+    volprofile_result['valid'] = False
+    if trade_side == DIRECTION.DOWN:
+        volprofile_result[volprofile_result.minPrice > current_price]['valid'] = True
+    else: 
+        volprofile_result[volprofile_result.maxPrice < current_price]['valid'] = True
+    # less risky
+    if remove_edge_levels:
+        low_level, high_level = 0, len(volprofile_result) - 1
+        low_level = int(high_level * cutoff_threshold)
+        high_level = int(high_level * (1 - cutoff_threshold))
+        volprofile_result.loc[low_level:high_level, 'valid'] = True 
+
+    _maxes = _get_max_idxs(volprofile_result[volprofile_result['valid'] == True])
+    return _maxes 
+
+
+
+
 def _get_tp_level_index(volprofile_result, tradeSide,
                ignorePercentageUp=20, ignorePercentageDown=20,
                thresholdType2=0.5):
+    volprofile_result['index'] = volprofile_result.index
+    volprofile_result['valid'] = False 
     volprofile_boxes = len(volprofile_result)
     start, end, step = int(volprofile_boxes / 100 * ignorePercentageDown),\
         int(volprofile_boxes - volprofile_boxes / 100 * ignorePercentageUp), 1
-
     if tradeSide == DIRECTION.DOWN:
         start, end, step = end, start - 1, -1
+    volprofile_result.loc[min(start, end):max(start, end), 'valid'] = True
 
     answers = []
-
-    minIdxs = _get_min_idxs(volprofile_result, start, end)
-    for minIdx in minIdxs:
+    for minIdx in _get_min_idxs(volprofile_result[volprofile_result['valid'] == True]):
         answers.append({'type': "type1", "index": minIdx})
-
-    for jumpedIdx in _get_jumped_idxs(volprofile_result, start, end, step, thresholdType2):
+    for jumpedIdx in _get_jumped_idxs(volprofile_result.aggregateVolume, start, end, step, thresholdType2):
         answers.append({'type': "type2", "index": jumpedIdx})
-    
     return answers
 
 
@@ -143,7 +175,7 @@ def getTPs(df: pd.DataFrame, tradeSide, maximumAcceptableBarType3=0,
     df = df[df.inVolumeProfile == True]
 
     res = vp.getVP(df, nBins=nBins)
-    TPsIdx = _get_tp_level_index(res.aggregateVolume, tradeSide,
+    TPsIdx = _get_tp_level_index(res, tradeSide,
                         ignorePercentageUp, ignorePercentageDown, thresholdType2=thresholdType2)
     TPs = _convert_index_to_price(res, TPsIdx, tradeSide)
     toReturn = TPs
@@ -173,6 +205,9 @@ def plot(df: pd.DataFrame, tradeSide, maximumAcceptableBarType3=0,
                  ignorePercentageDown=ignorePercentageDown, zigzagUpThreshold=zigzagUpThreshold, 
                  zigzagDownThreshold=zigzagDownThreshold, returnPivot=True, returnVP=True)
     TPs, res, pivots = res['tps'], res['vp'], res['pivots']  
+
+    res['index'] = res.index
+    _finally = _get_high_volume_area(res, 0, DIRECTION.DOWN, remove_edge_levels=True, cutoff_threshold=0.25)
 
     fig = make_subplots(rows = 1, cols = 2)
     fig.add_trace(go.Bar(
@@ -227,3 +262,4 @@ def _manual_test():
 
 if __name__ == '__main__':
     _manual_test()
+    
