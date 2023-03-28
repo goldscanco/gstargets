@@ -153,7 +153,9 @@ def plot(df: pd.DataFrame, tradeSide, maximumAcceptableBarType3=0,
     """
     df.reset_index(inplace=True, drop=True)
     forPlot = df.copy()
-    # print(df)
+    
+    pivots = peak_valley_pivots(
+        df.close, zigzagUpThreshold, zigzagDownThreshold)
     res = getTPs(df, tradeSide, maximumAcceptableBarType3=maximumAcceptableBarType3,
                  thresholdType2=thresholdType2, entryPoint=entryPoint, upWaveNums=upWaveNums,
                  downWaveNums=downWaveNums, nBins=nBins, windowType3=windowType3, ignorePercentageUp=ignorePercentageUp,
@@ -170,6 +172,14 @@ def plot(df: pd.DataFrame, tradeSide, maximumAcceptableBarType3=0,
     close = forPlot.close
     fig.add_trace(go.Scatter(name='close', y=close,
                 mode='lines', marker_color='#D2691E'))
+    for waveNum in upWaveNums:
+        wave = _findWave(pivots, waveNum, DIRECTION.UP)
+        fig.add_trace(go.Scatter(name='close', x=np.arange(len(close))[wave[0]: wave[1]], 
+                y=close[wave[0]: wave[1]], mode='lines', marker_color='black'))
+    for waveNum in downWaveNums:
+        wave = _findWave(pivots, waveNum, DIRECTION.DOWN)
+        fig.add_trace(go.Scatter(name='close', x=np.arange(len(close))[wave[0]: wave[1]], 
+                y=close[wave[0]: wave[1]], mode='lines', marker_color='black'))
     fig.add_trace(go.Scatter(name='top', x=np.arange(len(close))[
         pivots == 1], y=close[pivots == 1], mode='markers', marker_color='green'))
     fig.add_trace(go.Scatter(name='bottom', x=np.arange(len(close))[
