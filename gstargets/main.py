@@ -31,6 +31,26 @@ def _findWave(pivots, waveNum, direction):
         idx -= 1
     return indices[idx], indices[idx + 1]
 
+def _get_min_idxs(volprofile_result, start, end):
+    return np.add(np.where(volprofile_result[start:end] == np.min(volprofile_result[start:end])), start)[0]
+
+def _get_max_idxs(volprofile_result, start, end):
+    return np.add(np.where(volprofile_result[start:end] == np.max(volprofile_result[start:end])), start)[0]
+
+def _get_jumped_idxs(volprofile_result, start, end, step, thresholdType2):
+    answers = []
+    Half = False
+    prevBin = 0
+    for i in range(start, end, step):
+        curBin = volprofile_result[i]
+        if curBin < prevBin * thresholdType2:
+            Half = True
+        elif Half:
+            answers.append(i - 1)
+            Half = False
+        prevBin = curBin
+
+    return answers
 
 def _get_tp_level_index(volprofile_result, tradeSide,
                ignorePercentageUp=20, ignorePercentageDown=20,
@@ -43,22 +63,14 @@ def _get_tp_level_index(volprofile_result, tradeSide,
         start, end, step = end, start - 1, -1
 
     answers = []
-    prevBin = 0
-    Half = False
 
-    minIdxs = np.add(
-        np.where(volprofile_result[start:end] == np.min(volprofile_result[start:end])), start)
-    for minIdx in minIdxs[0]:
+    minIdxs = _get_min_idxs(volprofile_result, start, end)
+    for minIdx in minIdxs:
         answers.append({'type': "type1", "index": minIdx})
-    for i in range(start, end, step):
-        curBin = volprofile_result[i]
-        if curBin < prevBin * thresholdType2:
-            Half = True
-        elif Half:
-            answers.append({"type": "type2", "index": i - 1})
-            Half = False
-        prevBin = curBin
 
+    for jumpedIdx in _get_jumped_idxs(volprofile_result, start, end, step, thresholdType2):
+        answers.append({'type': "type2", "index": jumpedIdx})
+    
     return answers
 
 
