@@ -6,6 +6,12 @@ from plotly.subplots import make_subplots
 import volprofile as vp
 from gstargets.config import DIRECTION, Develop
 
+def _fractional_candle(fraction = 0.5, _dict={"open":None, "high":None, "low":None, "close":None}):
+    shadow = _dict['high'] - _dict['low']
+    body   = abs(_dict['open'] - _dict['close'])
+
+    return body / shadow < fraction
+
 
 def _findWave(pivots, waveNum, direction):
     """
@@ -125,7 +131,7 @@ def _get_requested_volprofile_for_waves(df, pivots, upWaveNums, downWaveNums, nB
     df['inVolumeProfile'] = False
 
     for upWaveNum in upWaveNums:
-        waveIndices = _findWave(pivots, upWaveNum, DIRECTION.DOWN)
+        waveIndices = _findWave(pivots, upWaveNum, DIRECTION.UP)
         cond1 = np.logical_and(
             df.index >= waveIndices[0], df.index < waveIndices[1])
         df['inVolumeProfile'] = np.logical_or(cond1, df['inVolumeProfile'])
@@ -154,8 +160,14 @@ def getReversalArea(df: pd.DataFrame, tradeSide, entryPoint=None, upWaveNums=[1]
     volprofile_result = _get_requested_volprofile_for_waves(df, pivots, upWaveNums, downWaveNums, nBins)  
 
     res = _get_high_volume_area(volprofile_result, current_price=entryPoint, trade_side=tradeSide, remove_edge_levels=True, cutoff_threshold=cutoff_threshold)
+    reversalAreas.extend(res)
     # the following line are only for testing purposes
-    toReturn = res
+    if Develop:
+        print(reversalAreas)
+    expand_reversal_areas(df, reversalAreas, tradeSide, pivots)
+    if Develop:
+        print(reversalAreas)
+    toReturn = reversalAreas 
     if returnVP or returnPivot:
         toReturn = {'reversal_areas': toReturn}
     if returnVP:
@@ -165,7 +177,29 @@ def getReversalArea(df: pd.DataFrame, tradeSide, entryPoint=None, upWaveNums=[1]
     return toReturn
 
 
+def expand_reversal_areas(df, reversalAreas, tradeSide, pivots):
+    expand = 'maxPrice'
+    down = 1
+    up   = 2
+    if tradeSide == DIRECTION.UP:
+        expand = 'minPrice' 
+        down = 2
+        up   = 1
+    
+    x = _findWave(pivots, waveNum=up, direction=DIRECTION.UP)
+    y = _findWave(pivots, waveNum=down, direction=DIRECTION.DOWN)
 
+    # get max of candle index that you should check before it
+    after  = min(x[0], y[0])
+    before = max(x[1], y[1])
+    
+    for i, row in df.iloc[after:before, :].iterrows():
+        for j, rev_area in enumerate(reversalAreas):
+            _dict = row.to_dict()
+            if _fractional_candle(0.5, _dict) and _dict['high'] > rev_area[expand] and _dict['low'] < rev_area[expand]:
+                reversalAreas[j][expand] = _dict['high'] if tradeSide == DIRECTION.DOWN else _dict['low']
+
+    
 def getTPs(df: pd.DataFrame, tradeSide, maximumAcceptableBarType3=0,
            thresholdType2=0.5, entryPoint=None, upWaveNums=[], downWaveNums=[],
            nBins=20, windowType3=2, ignorePercentageUp=20, ignorePercentageDown=20,
@@ -322,7 +356,6 @@ def plot_reversal_area(df, tradeSide, upWaveNums=[], downWaveNums=[]):
                 pivots == -1], y=close[pivots == -1], mode='markers', marker_color='red'))
 
     for line in rev_areas:
-        print(line)
         fig.add_hline(y=line['maxPrice'], line_width=3, line_dash="dash", line_color="green")
         fig.add_hline(y=line['minPrice'], line_width=3, line_dash="dash", line_color="blue")
         
@@ -334,15 +367,15 @@ def _manual_test_reversal():
     path = "~/Downloads/data/tickers_data/test.csv"
     df = pd.read_csv(path)
 
-    tradeSide = DIRECTION.DOWN
-    upWaveNums = [1]
+    tradeSide = DIRECTION.UP
+    upWaveNums = []
+    downWaveNums = [1]
 
     n = 1000 
     df = df[-n:]
     
     df['price'] = (df['high'] + df['low']) / 2
-    df = df[['volume', 'price', 'close']]
-    plot_reversal_area(df, tradeSide, upWaveNums=upWaveNums)
+    plot_reversal_area(df, tradeSide, upWaveNums=upWaveNums, downWaveNums=downWaveNums)
 
 if __name__ == '__main__':
     # _manual_test_tp()
