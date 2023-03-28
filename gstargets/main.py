@@ -32,24 +32,26 @@ def _findWave(pivots, waveNum, direction):
     return indices[idx], indices[idx + 1]
 
 
-def _getTPsIdx(histogram, tradeSide, ignorePercentageUp=20, ignorePercentageDown=20, thresholdType2=0.5):
-    _from, _to = int(len(histogram) // (100/ignorePercentageDown)),\
-        int(len(histogram) - len(histogram) // (100//ignorePercentageUp))
+def _get_tp_level_index(volprofile_result, tradeSide,
+               ignorePercentageUp=20, ignorePercentageDown=20,
+               thresholdType2=0.5):
+    volprofile_boxes = len(volprofile_result)
+    start, end, step = int(volprofile_boxes / 100 * ignorePercentageDown),\
+        int(volprofile_boxes - volprofile_boxes / 100 * ignorePercentageUp), 1
 
-    start, end, step = _from, _to + 1, 1
     if tradeSide == DIRECTION.DOWN:
-        start, end, step = _to, _from - 1, -1
+        start, end, step = end, start - 1, -1
 
     answers = []
     prevBin = 0
     Half = False
 
     minIdxs = np.add(
-        np.where(histogram[_from:_to] == np.min(histogram[_from:_to])), _from)
+        np.where(volprofile_result[start:end] == np.min(volprofile_result[start:end])), start)
     for minIdx in minIdxs[0]:
         answers.append({'type': "type1", "index": minIdx})
     for i in range(start, end, step):
-        curBin = histogram[i]
+        curBin = volprofile_result[i]
         if curBin < prevBin * thresholdType2:
             Half = True
         elif Half:
@@ -60,7 +62,7 @@ def _getTPsIdx(histogram, tradeSide, ignorePercentageUp=20, ignorePercentageDown
     return answers
 
 
-def _getTPs(vpdf, tpsIdx, trend):
+def _convert_index_to_price(vpdf, tpsIdx, trend):
     res = []
     for _, dic in enumerate(tpsIdx):
         price = vpdf.iloc[dic['index']
@@ -128,9 +130,9 @@ def getTPs(df: pd.DataFrame, tradeSide, maximumAcceptableBarType3=0,
     df = df[df.inVolumeProfile == True]
 
     res = vp.getVP(df, nBins=nBins)
-    TPsIdx = _getTPsIdx(res.aggregateVolume, tradeSide,
+    TPsIdx = _get_tp_level_index(res.aggregateVolume, tradeSide,
                         ignorePercentageUp, ignorePercentageDown, thresholdType2=thresholdType2)
-    TPs = _getTPs(res, TPsIdx, tradeSide)
+    TPs = _convert_index_to_price(res, TPsIdx, tradeSide)
     toReturn = TPs
     if returnVP or returnPivot:
         toReturn = {'tps': TPs}
