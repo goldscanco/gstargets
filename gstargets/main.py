@@ -78,7 +78,8 @@ def getTPs(df: pd.DataFrame, tradeSide, maximumAcceptableBarType3=0,
     """suggest target points based on wave
 
     params:
-        df: pd.DataFrame -> appropriate for volume profile which I had explained in the volprofile package. Checkout `volprofile.getVP` function.
+        df: pd.DataFrame -> appropriate for volume profile which I had explained in the volprofile package. 
+                            Checkout `volprofile.getVP` function.
                         It means that it should have `price` and `volume`
                         Also it must provide the basic ohlcv data.
         tradeSide: str: ['UP', 'DOWN']
@@ -103,9 +104,9 @@ def getTPs(df: pd.DataFrame, tradeSide, maximumAcceptableBarType3=0,
     return:
         list[Dict{'type', 'price'}] 
         types can be either 
-            type1 : minimum volume bar
-            type2 : devided by half from one to another
-            type3 : before some strong volume bars
+            type1 : the level with minimum volume 
+            type2 : the level which is significantly jumped by thresholdType2(ex. 0.5) from last bar  
+            type3 : before some strong volume level(s) 
     """
 
     df.reset_index(inplace=True, drop=True)
@@ -179,7 +180,7 @@ def plot(df: pd.DataFrame, tradeSide, maximumAcceptableBarType3=0,
         
     fig.show()
 
-def _test():
+def _manual_test():
     path = "~/Downloads/data/tickers_data/test.csv"
     df = pd.read_csv(path)
 
@@ -208,4 +209,4 @@ def _test():
  
 
 if __name__ == '__main__':
-    _test()
+    _manual_test()
