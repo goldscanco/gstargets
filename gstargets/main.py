@@ -187,14 +187,8 @@ def _manual_test():
     nBins = 20
     tradeSide = DIRECTION.UP
     downWaveNums = [1]
-    upWaveNums = []
     zigzagDownThreshold = -0.3
     zigzagUpThreshold = 0.3
-    ignorePercentageUp = 20
-    ignorePercentageDown = 20
-
-    # TODO: type 3 input
-    # TODO: increasing type3
 
     n = 1000 
     df = df[-n:]
