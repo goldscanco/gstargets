@@ -135,6 +135,7 @@ def getTPs(df: pd.DataFrame, tradeSide, maximumAcceptableBarType3=0,
                         ignorePercentageUp, ignorePercentageDown, thresholdType2=thresholdType2)
     TPs = _convert_index_to_price(res, TPsIdx, tradeSide)
     toReturn = TPs
+    # the following line are only for testing purposes
     if returnVP or returnPivot:
         toReturn = {'tps': TPs}
     if returnVP:
@@ -154,8 +155,6 @@ def plot(df: pd.DataFrame, tradeSide, maximumAcceptableBarType3=0,
     df.reset_index(inplace=True, drop=True)
     forPlot = df.copy()
     
-    pivots = peak_valley_pivots(
-        df.close, zigzagUpThreshold, zigzagDownThreshold)
     res = getTPs(df, tradeSide, maximumAcceptableBarType3=maximumAcceptableBarType3,
                  thresholdType2=thresholdType2, entryPoint=entryPoint, upWaveNums=upWaveNums,
                  downWaveNums=downWaveNums, nBins=nBins, windowType3=windowType3, ignorePercentageUp=ignorePercentageUp,
@@ -191,6 +190,8 @@ def plot(df: pd.DataFrame, tradeSide, maximumAcceptableBarType3=0,
     fig.show()
 
 def _manual_test():
+    # TODO : use yfinance and pytse-client to get plenty of tickers 
+    # and test automatically
     path = "~/Downloads/data/tickers_data/test.csv"
     df = pd.read_csv(path)
 
