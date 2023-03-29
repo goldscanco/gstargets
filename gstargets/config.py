@@ -1,6 +1,6 @@
 class DIRECTION:
-    UP = 'up'
-    DOWN = 'down'
+    UP = "up"
+    DOWN = "down"
 
 
 Develop = True
