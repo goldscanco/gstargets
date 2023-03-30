@@ -63,18 +63,20 @@ def _get_max_idxs(volprofile_result):
     return answers
 
 
-def _get_jumped_idxs(volprofile_result, start, end, step, thresholdType2):
+def _get_jumped_idxs(volprofile_result: pd.DataFrame, thresholdType2, tradeSide):
+    step = 1 if tradeSide == DIRECTION.UP else -1
     answers = []
     Half = False
-    prevBin = 0
-    for i in range(start, end, step):
-        curBin = volprofile_result[i]
-        if curBin < prevBin * thresholdType2:
+    prevBin = {"aggregateVolume": 0}
+    for _, row in volprofile_result[::step].iterrows():
+        if not row["valid"]:
+            continue
+        if row["aggregateVolume"] < prevBin["aggregateVolume"] * thresholdType2:
             Half = True
         elif Half:
-            answers.append(i - 1)
+            answers.append(prevBin["index"])
             Half = False
-        prevBin = curBin
+        prevBin = row
 
     return answers
 
@@ -106,6 +108,20 @@ def _get_high_volume_area(
     return [volprofile_result.iloc[_max, :].to_dict() for _max in _maxes]
 
 
+def _prepare_dataframe_volumeprofile(df: pd.DataFrame):
+    df["index"] = df.index
+    df["valid"] = False
+
+
+def _set_ignore(upP, downP, df: pd.DataFrame):
+    _len = len(df)
+    start, end = (
+        int(_len / 100 * downP),
+        int(_len - _len / 100 * upP),
+    )
+    df.loc[start:end, "valid"] = True
+
+
 def _get_tp_level_index(
     volprofile_result,
     tradeSide,
@@ -113,26 +129,15 @@ def _get_tp_level_index(
     ignorePercentageDown=20,
     thresholdType2=0.5,
 ):
-    volprofile_result["index"] = volprofile_result.index
-    volprofile_result["valid"] = False
-    volprofile_boxes = len(volprofile_result)
-    start, end, step = (
-        int(volprofile_boxes / 100 * ignorePercentageDown),
-        int(volprofile_boxes - volprofile_boxes / 100 * ignorePercentageUp),
-        1,
-    )
-    if tradeSide == DIRECTION.DOWN:
-        start, end, step = end, start - 1, -1
-    volprofile_result.loc[min(start, end) : max(start, end), "valid"] = True
+    _prepare_dataframe_volumeprofile(volprofile_result)
+    _set_ignore(ignorePercentageUp, ignorePercentageDown, volprofile_result)
 
     answers = []
-    for minIdx in _get_min_idxs(volprofile_result[volprofile_result["valid"] == True]):
+    for minIdx in _get_min_idxs(volprofile_result[volprofile_result["valid"]]):
         answers.append({"type": "type1", "index": minIdx})
-    for jumpedIdx in _get_jumped_idxs(
-        volprofile_result.aggregateVolume, start, end, step, thresholdType2
-    ):
+    for jumpedIdx in _get_jumped_idxs(volprofile_result, thresholdType2, tradeSide):
         answers.append({"type": "type2", "index": jumpedIdx})
-    if Develop == True:
+    if Develop:
         print(answers)
     return answers
 
@@ -550,5 +555,5 @@ def _manual_test_reversal():
 
 
 if __name__ == "__main__":
-    # _manual_test_tp()
+    _manual_test_tp()
     _manual_test_reversal()
