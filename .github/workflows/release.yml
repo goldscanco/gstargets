@@ -1,21 +1,27 @@
-name: Release
+name: build-and-publish
 
 on:
   push:
     tags:
-      - '*.*.*'
+      - '*'
 
 jobs:
-  release:
-    name: Release
+  build-and-publish:
     runs-on: ubuntu-latest
     steps:
-    
-      - name: copy release management scripts
-        run: cp 'pyproject.toml' '${GITHUB_WORKSPACE}/'
-        shell: bash
-        
-      - name: Publish python poetry package
-        uses: JRubics/poetry-publish@v1.14
+      - uses: actions/checkout@v2
+      - name: Set up Python
+        uses: actions/setup-python@v2
         with:
-          pypi_token: ${{ secrets.PYPI_TOKEN }}
+          python-version: 3.9
+      - name: Install dependencies
+        run: |
+          pip install poetry
+          poetry install --no-dev
+      - name: Build and publish package
+        env:
+          POETRY_PYPI_TOKEN: ${{ secrets.pypi_token }}
+        run: |
+          poetry config pypi-token.pypi $POETRY_PYPI_TOKEN
+          poetry build
+          poetry publish --verbose
