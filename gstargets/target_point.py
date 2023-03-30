@@ -6,9 +6,8 @@ from gstargets.shared import (
     _get_jumped_idxs,
     _get_requested_volprofile_for_waves,
     _set_ignore,
-    _prepare_dataframe_volumeprofile
+    _prepare_dataframe_volumeprofile,
 )
-
 
 
 def _get_tp_level_index(
@@ -43,7 +42,6 @@ def _convert_index_to_price(vpdf, tpsIdx, trend):
     if Develop:
         print(res)
     return res
-
 
 
 def getTPs(
@@ -113,4 +111,3 @@ def getTPs(
     if returnPivot:
         toReturn["pivots"] = pivots
     return toReturn
-

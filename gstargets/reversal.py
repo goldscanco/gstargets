@@ -7,7 +7,7 @@ from gstargets.shared import (
     _set_ignore,
     _findWave,
     _fractional_candle,
-    _prepare_dataframe_volumeprofile
+    _prepare_dataframe_volumeprofile,
 )
 
 
@@ -53,7 +53,6 @@ def getReversalArea(
     if returnPivot:
         toReturn["pivots"] = pivots
     return toReturn
-
 
 
 def _expand_reversal_areas(df, reversalAreas, tradeSide, pivots):
