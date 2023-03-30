@@ -82,7 +82,7 @@ def _get_jumped_idxs(volprofile_result: pd.DataFrame, thresholdType2, tradeSide)
 
 
 def _get_high_volume_area(
-    volprofile_result:pd.DataFrame,
+    volprofile_result: pd.DataFrame,
     current_price,
     trade_side,
 ):
@@ -239,13 +239,10 @@ def _expand_reversal_areas(df, reversalAreas, tradeSide, pivots):
 def getTPs(
     df: pd.DataFrame,
     tradeSide,
-    maximumAcceptableBarType3=0,
     thresholdType2=0.5,
-    entryPoint=None,
     upWaveNums=[],
     downWaveNums=[],
     nBins=20,
-    windowType3=2,
     ignorePercentageUp=20,
     ignorePercentageDown=20,
     zigzagUpThreshold=0.3,
@@ -261,18 +258,13 @@ def getTPs(
                         It means that it should have `price` and `volume`
                         Also it must provide the basic ohlcv data.
         tradeSide: str: ['UP', 'DOWN']
-        maximumAcceptableBarType3: int -> calculate type3 TPs based on this
         thresholdType2: float -> calculate type2 TPs based on this
-        entryPoint: float ->
-                        default (None)
         upWaveNums: list[int] -> Exclusive list of the upward waves to be selected for volume profile indicator.
                         It starts from 1 which means the last upward wave except for the current wave.
                         default ([])
         downWaveNums: list[int] -> same as upWaveNums but in downWard direction default ([])
         nBins: int -> needed for volume profile
                         default (20)
-        windowType3: int -> calculate type3 TPs based on this
-                        default (nBins // 10)
         ignorePercentageUp: int -> ignore the results of the volume profile calculation from the top
                         default (20)
         ignorePercentageDown: int -> ignore the results of the volume profile calculation from the bottom
@@ -486,8 +478,8 @@ def plot_reversal_area(df, tradeSide, upWaveNums=[], downWaveNums=[]):
         fig.add_trace(
             go.Scatter(
                 name="close",
-                x=np.arange(len(close))[wave[0]:wave[1]],
-                y=close[wave[0]:wave[1]],
+                x=np.arange(len(close))[wave[0] : wave[1]],
+                y=close[wave[0] : wave[1]],
                 mode="lines",
                 marker_color="black",
             )
