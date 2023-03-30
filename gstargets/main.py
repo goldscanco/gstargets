@@ -142,6 +142,8 @@ def plot_reversal_area(df, tradeSide, upWaveNums=[], downWaveNums=[]):
     res = getReversalArea(
         df,
         tradeSide,
+        zigzagUpThreshold=0.4,
+        zigzagDownThreshold=-0.4,
         upWaveNums=upWaveNums,
         downWaveNums=downWaveNums,
         returnPivot=True,
@@ -224,7 +226,7 @@ def _manual_test_reversal():
     downWaveNums = [1]
 
     n = 1000
-    df = df[-n:]
+    df = df[-n:-n//3]
 
     df["price"] = (df["high"] + df["low"]) / 2
     plot_reversal_area(df, tradeSide, upWaveNums=upWaveNums, downWaveNums=downWaveNums)

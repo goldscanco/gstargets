@@ -42,7 +42,7 @@ def getReversalArea(
     # the following line are only for testing purposes
     if Develop:
         print(reversalAreas)
-    _expand_reversal_areas(df, reversalAreas, tradeSide, pivots)
+    _expand_reversal_areas(df, reversalAreas, tradeSide, pivots, zigzagUpThreshold, zigzagDownThreshold)
     if Develop:
         print(reversalAreas)
     toReturn = reversalAreas
@@ -55,29 +55,50 @@ def getReversalArea(
     return toReturn
 
 
-def _expand_reversal_areas(df, reversalAreas, tradeSide, pivots):
+def _expand_reversal_areas(df, reversalAreas, tradeSide, pivots, upThr, downThr):
     expand = "maxPrice"
-    down = 1
-    up = 2
     if tradeSide == DIRECTION.UP:
         expand = "minPrice"
-        down = 2
-        up = 1
 
-    x = _findWave(pivots, waveNum=up, direction=DIRECTION.UP)
-    y = _findWave(pivots, waveNum=down, direction=DIRECTION.DOWN)
+    after, before = _findWave(pivots, waveNum=1, direction=DIRECTION.UP if tradeSide == DIRECTION.DOWN else DIRECTION.DOWN)
 
-    # get max of candle index that you should check before it
-    after = min(x[0], y[0])
-    before = max(x[1], y[1])
-
-    for i, row in df.iloc[after:before, :].iterrows():
+    print(after, before)
+    # first iteration to get the approximate area
+    for _, row in df.iloc[after:before, :].iterrows():
         for j, rev_area in enumerate(reversalAreas):
             _dict = row.to_dict()
             if (
                 _fractional_candle(0.5, _dict)
                 and _dict["high"] > rev_area[expand]
                 and _dict["low"] < rev_area[expand]
+            ):
+                reversalAreas[j][expand] = (
+                    _dict["high"] if tradeSide == DIRECTION.DOWN else _dict["low"]
+                )
+    # TODO remove hard-code
+    micro_pivots = peak_valley_pivots(df.close, upThr/5, downThr/5)
+
+    valid_pivots = set()
+    Idx = 1
+    while True:
+        leftU, _ = _findWave(micro_pivots, Idx, direction=DIRECTION.UP)
+        leftD, _ = _findWave(micro_pivots, Idx, direction=DIRECTION.DOWN)
+
+        if leftU < before and leftU > after:
+            valid_pivots.add(leftU)
+        if leftD < before and leftD > after:
+            valid_pivots.add(leftD)
+
+        if leftD < after and leftU < after:
+            break
+        Idx += 1
+
+    for idx, row in df.iloc[after:before, :].iterrows():
+        for j, rev_area in enumerate(reversalAreas):
+            _dict = row.to_dict()
+            if (
+                abs(_dict['close'] - rev_area[expand]) / rev_area[expand] < 0.13
+                and idx in valid_pivots
             ):
                 reversalAreas[j][expand] = (
                     _dict["high"] if tradeSide == DIRECTION.DOWN else _dict["low"]

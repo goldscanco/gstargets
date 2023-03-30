@@ -10,7 +10,8 @@ def _fractional_candle(
 ):
     shadow = _dict["high"] - _dict["low"]
     body = abs(_dict["open"] - _dict["close"])
-
+    if shadow == 0:
+        return False
     return body / shadow < fraction
 
 
