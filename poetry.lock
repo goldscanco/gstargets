@@ -44,13 +44,14 @@ test = ["hypothesis (>=5.5.3)", "pytest (>=6.0)", "pytest-xdist (>=1.31)"]
 
 [[package]]
 name = "plotly"
-version = "5.13.1"
+version = "5.14.0"
 description = "An open-source, interactive data visualization library for Python"
 category = "main"
 optional = false
 python-versions = ">=3.6"
 
 [package.dependencies]
+packaging = "*"
 tenacity = ">=6.2.0"
 
 [[package]]
@@ -66,7 +67,7 @@ six = ">=1.5"
 
 [[package]]
 name = "pytz"
-version = "2023.2"
+version = "2023.3"
 description = "World timezone definitions, modern and historical"
 category = "main"
 optional = false
@@ -119,7 +120,7 @@ numpy = ">=1.21.1"
 [metadata]
 lock-version = "1.1"
 python-versions = ">=3.8,<4"  
-content-hash = "ada4c723ec2fb1ae3ee52238da176cf69e391e5117f11b6f84215a7b47196a66"
+content-hash = "7ea274ad8d94a72b15b24293e2e0d3af720242a2cb344b8ad0254ef4c2c38d94"
 
 [metadata.files]
 cython = []

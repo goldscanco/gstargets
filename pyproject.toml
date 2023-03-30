@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "gstargets"
-version = "0.2.4"
+version = "0.2.5"
 description = ""
 authors = ["sajad faghfoor maghrebi <sajad.faghfoor@gmail.com>"]
 
@@ -9,7 +9,7 @@ packages = [
 ]
 
 [tool.poetry.dependencies]
-python = ">=3.6,<4"  
+python = ">=3.8,<4"  
 zigzag = "^0.3.2"
 volprofile = "^0.1.8"
 packaging = "^23.0"
