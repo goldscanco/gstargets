@@ -93,11 +93,11 @@ doc = ["reno", "sphinx", "tornado (>=4.5)"]
 
 [[package]]
 name = "volprofile"
-version = "0.1.6"
+version = "0.1.8"
 description = "calculate the volume profile in a flexible manner!"
 category = "main"
 optional = false
-python-versions = ">=3.x,<4"
+python-versions = ">=3.6,<4"
 
 [package.dependencies]
 numpy = ">=1.23.4,<2.0.0"
