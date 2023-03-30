@@ -82,29 +82,16 @@ def _get_jumped_idxs(volprofile_result: pd.DataFrame, thresholdType2, tradeSide)
 
 
 def _get_high_volume_area(
-    volprofile_result,
+    volprofile_result:pd.DataFrame,
     current_price,
     trade_side,
-    remove_edge_levels=False,
-    cutoff_threshold=0.25,
 ):
-    # should it only check for beyond the current price
-    # in downward trend detection for example check for
-    # greater than current price reversal values ?
-
-    volprofile_result["valid"] = False
     if trade_side == DIRECTION.DOWN:
-        volprofile_result[volprofile_result.minPrice > current_price]["valid"] = True
+        volprofile_result[volprofile_result.minPrice > current_price]["valid"] &= True
     else:
-        volprofile_result[volprofile_result.maxPrice < current_price]["valid"] = True
-    # less risky
-    if remove_edge_levels:
-        low_level, high_level = 0, len(volprofile_result) - 1
-        low_level = int(high_level * cutoff_threshold)
-        high_level = int(high_level * (1 - cutoff_threshold))
-        volprofile_result.loc[low_level:high_level, "valid"] = True
+        volprofile_result[volprofile_result.maxPrice < current_price]["valid"] &= True
 
-    _maxes = _get_max_idxs(volprofile_result[volprofile_result["valid"] == True])
+    _maxes = _get_max_idxs(volprofile_result[volprofile_result["valid"]])
     return [volprofile_result.iloc[_max, :].to_dict() for _max in _maxes]
 
 
@@ -183,35 +170,31 @@ def getReversalArea(
     upWaveNums=[1],
     downWaveNums=[1],
     nBins=20,
-    windowType3=2,
     ignorePercentageUp=20,
     ignorePercentageDown=20,
     zigzagUpThreshold=0.3,
     zigzagDownThreshold=-0.3,
     returnVP=False,
     returnPivot=False,
-    cutoff_threshold=0.25,
 ):
     reversalAreas = []
-    df.reset_index(inplace=True, drop=True)
-
     pivots = peak_valley_pivots(df.close, zigzagUpThreshold, zigzagDownThreshold)
     volprofile_result = _get_requested_volprofile_for_waves(
         df, pivots, upWaveNums, downWaveNums, nBins
     )
+    _prepare_dataframe_volumeprofile(volprofile_result)
+    _set_ignore(ignorePercentageUp, ignorePercentageDown, volprofile_result)
 
     res = _get_high_volume_area(
         volprofile_result,
         current_price=entryPoint,
         trade_side=tradeSide,
-        remove_edge_levels=True,
-        cutoff_threshold=cutoff_threshold,
     )
     reversalAreas.extend(res)
     # the following line are only for testing purposes
     if Develop:
         print(reversalAreas)
-    expand_reversal_areas(df, reversalAreas, tradeSide, pivots)
+    _expand_reversal_areas(df, reversalAreas, tradeSide, pivots)
     if Develop:
         print(reversalAreas)
     toReturn = reversalAreas
@@ -224,7 +207,7 @@ def getReversalArea(
     return toReturn
 
 
-def expand_reversal_areas(df, reversalAreas, tradeSide, pivots):
+def _expand_reversal_areas(df, reversalAreas, tradeSide, pivots):
     expand = "maxPrice"
     down = 1
     up = 2
