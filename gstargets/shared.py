@@ -52,14 +52,17 @@ def _get_min_idxs(volprofile_result):
 
 
 def _get_max_idxs(volprofile_result):
-    idxs = np.where(
+    idxs = list(np.where(
         volprofile_result.aggregateVolume == np.max(volprofile_result.aggregateVolume)
-    )[0]
+    )[0])
 
-    answers = []
-    for idx in idxs:
-        answers.append(int(volprofile_result.iloc[idx, :]["index"]))
-    return answers
+    print(idxs)
+
+    volprofile_result['average'] = volprofile_result["aggregateVolume"].mean()
+    volprofile_result["high"] = (volprofile_result.aggregateVolume - volprofile_result.average) / volprofile_result.average > 0.2 
+    toadd = list(volprofile_result.loc[volprofile_result["high"]].index)
+    idxs.extend(toadd)
+    return idxs 
 
 
 def _get_jumped_idxs(volprofile_result: pd.DataFrame, thresholdType2, tradeSide):
@@ -80,7 +83,7 @@ def _get_jumped_idxs(volprofile_result: pd.DataFrame, thresholdType2, tradeSide)
     return answers
 
 
-def _get_high_volume_area(
+def _get_high_volume_levels(
     volprofile_result: pd.DataFrame,
     current_price,
     trade_side,
@@ -91,7 +94,40 @@ def _get_high_volume_area(
         volprofile_result[volprofile_result.maxPrice < current_price]["valid"] &= True
 
     _maxes = _get_max_idxs(volprofile_result[volprofile_result["valid"]])
-    return [volprofile_result.iloc[_max, :].to_dict() for _max in _maxes]
+    areas = [volprofile_result.iloc[_max, :].to_dict() for _max in _maxes]
+
+    sorted_areas = sorted(areas, key=lambda area: area["minPrice"]) 
+    to_combine = sorted_areas[0]
+    finals = []
+    for i in range(1, len(sorted_areas)):
+        new = sorted_areas[i]
+        if to_combine is None:
+            to_combine = new
+            continue
+        if _can_combine(to_combine, new):
+            to_combine = _get_combined(to_combine, new)
+            continue
+        else:
+            finals.append(to_combine)
+            to_combine = new
+    if to_combine is not None:
+        finals.append(to_combine)
+
+    return finals
+
+
+def _can_combine(area1, area2):
+    _min = min(area1['minPrice'], area2['minPrice'])
+    _max = max(area1['maxPrice'], area2['maxPrice'])
+
+    return _max - _min < (area1['maxPrice'] + area2['maxPrice'] - area1['minPrice'] - area2['minPrice']) * 1.02
+
+
+def _get_combined(area1, area2):
+    _min = min(area1['minPrice'], area2['minPrice'])
+    _max = max(area1['maxPrice'], area2['maxPrice'])
+
+    return {'minPrice': _min, 'maxPrice': _max, 'index': f"{area1['index']}_{area2['index']}"}
 
 
 def _prepare_dataframe_volumeprofile(df: pd.DataFrame):

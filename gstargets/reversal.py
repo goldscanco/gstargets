@@ -2,7 +2,7 @@ from zigzag import peak_valley_pivots
 import pandas as pd
 from gstargets.config import DIRECTION, Develop
 from gstargets.shared import (
-    _get_high_volume_area,
+    _get_high_volume_levels,
     _get_requested_volprofile_for_waves,
     _set_ignore,
     _findWave,
@@ -33,15 +33,12 @@ def getReversalArea(
     _prepare_dataframe_volumeprofile(volprofile_result)
     _set_ignore(ignorePercentageUp, ignorePercentageDown, volprofile_result)
 
-    res = _get_high_volume_area(
+    res = _get_high_volume_levels(
         volprofile_result,
         current_price=entryPoint,
         trade_side=tradeSide,
     )
     reversalAreas.extend(res)
-    # the following line are only for testing purposes
-    if Develop:
-        print(reversalAreas)
     _expand_reversal_areas(df, reversalAreas, tradeSide, pivots, zigzagUpThreshold, zigzagDownThreshold)
     if Develop:
         print(reversalAreas)
