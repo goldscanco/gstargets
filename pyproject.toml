@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "gstargets"
-version = "0.2.7"
+version = "0.2.8"
 description = ""
 authors = ["sajad faghfoor maghrebi <sajad.faghfoor@gmail.com>"]
 
