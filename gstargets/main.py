@@ -64,8 +64,8 @@ def plot_target_points(
         fig.add_trace(
             go.Scatter(
                 name="close",
-                x=np.arange(len(close))[wave[0] : wave[1]],
-                y=close[wave[0] : wave[1]],
+                x=np.arange(len(close))[wave[0]: wave[1]],
+                y=close[wave[0]: wave[1]],
                 mode="lines",
                 marker_color="black",
             )
@@ -75,8 +75,8 @@ def plot_target_points(
         fig.add_trace(
             go.Scatter(
                 name="close",
-                x=np.arange(len(close))[wave[0] : wave[1]],
-                y=close[wave[0] : wave[1]],
+                x=np.arange(len(close))[wave[0]: wave[1]],
+                y=close[wave[0]: wave[1]],
                 mode="lines",
                 marker_color="black",
             )
@@ -170,8 +170,8 @@ def plot_reversal_area(df, tradeSide, upWaveNums=[], downWaveNums=[]):
         fig.add_trace(
             go.Scatter(
                 name="close",
-                x=np.arange(len(close))[wave[0] : wave[1]],
-                y=close[wave[0] : wave[1]],
+                x=np.arange(len(close))[wave[0]: wave[1]],
+                y=close[wave[0]: wave[1]],
                 mode="lines",
                 marker_color="black",
             )
@@ -181,8 +181,8 @@ def plot_reversal_area(df, tradeSide, upWaveNums=[], downWaveNums=[]):
         fig.add_trace(
             go.Scatter(
                 name="close",
-                x=np.arange(len(close))[wave[0] : wave[1]],
-                y=close[wave[0] : wave[1]],
+                x=np.arange(len(close))[wave[0]: wave[1]],
+                y=close[wave[0]: wave[1]],
                 mode="lines",
                 marker_color="black",
             )
@@ -229,7 +229,8 @@ def _manual_test_reversal():
     df = df[-n:-n//3]
 
     df["price"] = (df["high"] + df["low"]) / 2
-    plot_reversal_area(df, tradeSide, upWaveNums=upWaveNums, downWaveNums=downWaveNums)
+    plot_reversal_area(df, tradeSide, upWaveNums=upWaveNums,
+                       downWaveNums=downWaveNums)
 
 
 if __name__ == "__main__":
